@@ -18,13 +18,13 @@ section h2 {
 }
 
 .profile-img {
-  width: 50px; /* Ubah ukuran gambar profile menjadi 150px */
-  height: 50px;
+  width: 250px; /* Ubah ukuran gambar profile menjadi 150px */
+  height: 250px;
   object-fit: cover;
 }
 
 .project-img {
-  height: 50px; /* Batasi tinggi gambar proyek */
+  height: 100px; /* Batasi tinggi gambar proyek */
   object-fit: cover;
 }
 
