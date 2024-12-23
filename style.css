@@ -24,7 +24,7 @@ section h2 {
 }
 
 .project-img {
-  height: 200px; /* Batasi tinggi gambar proyek */
+  height: 50px; /* Batasi tinggi gambar proyek */
   object-fit: cover;
 }
 
