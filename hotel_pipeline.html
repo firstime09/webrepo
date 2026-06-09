@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hotel Pricing Classification Pipeline</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#ffffff;--bg2:#f7f6f3;--bg3:#f0eeea;
+  --txt:#1a1a18;--txt2:#5c5b56;--txt3:#9c9a92;
+  --bdr:rgba(0,0,0,0.1);--bdr2:rgba(0,0,0,0.06);
+  --teal:#1D9E75;--teal-l:#E1F5EE;--teal-d:#085041;
+  --blue:#185FA5;--blue-l:#E6F1FB;--blue-d:#0C447C;
+  --purple:#534AB7;--purple-l:#EEEDFE;--purple-d:#3C3489;
+  --amber:#BA7517;--amber-l:#FAEEDA;--amber-d:#633806;
+  --coral:#993C1D;--coral-l:#FAECE7;--coral-d:#712B13;
+  --pink:#993556;--pink-l:#FBEAF0;--pink-d:#72243E;
+  --green:#3B6D11;--green-l:#EAF3DE;--green-d:#173404;
+  --gray-l:#F1EFE8;--gray-d:#444441;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#1c1c1a;--bg2:#252522;--bg3:#2e2e2b;
+    --txt:#e8e6df;--txt2:#b4b2a9;--txt3:#73726c;
+    --bdr:rgba(255,255,255,0.1);--bdr2:rgba(255,255,255,0.06);
+    --teal-l:#04342C;--teal-d:#9FE1CB;
+    --blue-l:#042C53;--blue-d:#B5D4F4;
+    --purple-l:#26215C;--purple-d:#AFA9EC;
+    --amber-l:#412402;--amber-d:#FAC775;
+    --coral-l:#4A1B0C;--coral-d:#F5C4B3;
+    --pink-l:#4B1528;--pink-d:#F4C0D1;
+    --green-l:#173404;--green-d:#C0DD97;
+    --gray-l:#2C2C2A;--gray-d:#D3D1C7;
+  }
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--txt);font-size:14px;line-height:1.6;padding:24px 20px;max-width:860px;margin:0 auto}
+h1{font-size:20px;font-weight:500;margin-bottom:4px}
+.sub{font-size:13px;color:var(--txt2);margin-bottom:20px}
+
+/* Tabs */
+.tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap}
+.tab{padding:6px 14px;border:0.5px solid var(--bdr);border-radius:20px;font-size:12px;cursor:pointer;background:transparent;color:var(--txt2);transition:all .2s}
+.tab.on{background:var(--blue-l);color:var(--blue-d);border-color:transparent;font-weight:500}
+.pnl{display:none}.pnl.on{display:block}
+
+/* Pipeline stepper */
+.pipe{position:relative;padding-left:48px}
+.pipe-line{position:absolute;left:19px;top:24px;bottom:24px;width:2px;background:var(--bdr2)}
+.stage{position:relative;margin-bottom:4px;cursor:pointer}
+.stage-head{display:flex;align-items:center;gap:12px;padding:11px 14px 11px 0;border-radius:10px;transition:background .15s}
+.stage-head:hover{background:var(--bg2)}
+.stage.open .stage-head{background:var(--bg2)}
+.stage-num{position:absolute;left:-48px;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;border:2px solid var(--bg);flex-shrink:0;transition:transform .2s}
+.stage.open .stage-num{transform:scale(1.1)}
+.stage-title{font-size:13px;font-weight:500;color:var(--txt);flex:1}
+.stage-badge{font-size:10px;font-weight:500;padding:2px 8px;border-radius:10px;white-space:nowrap}
+.stage-body{display:none;padding:0 0 12px 0;margin-left:0}
+.stage.open .stage-body{display:block}
+.stage-desc{font-size:12px;color:var(--txt2);line-height:1.65;margin-bottom:10px}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(0,1fr));gap:6px;margin-bottom:8px}
+.field{background:var(--bg3);border-radius:7px;padding:8px 10px;border:0.5px solid var(--bdr2)}
+.field-name{font-size:11px;font-weight:500;color:var(--txt);margin-bottom:2px}
+.field-type{font-size:10px;color:var(--txt3)}
+.formula{font-family:'SF Mono',Consolas,monospace;font-size:11px;background:var(--bg3);padding:8px 12px;border-radius:7px;color:var(--txt);margin-bottom:8px;white-space:pre-wrap;border:0.5px solid var(--bdr2)}
+.pills{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.pill{font-size:10px;padding:2px 7px;border-radius:10px;background:var(--bg3);border:0.5px solid var(--bdr2);color:var(--txt2)}
+.note{border-left:3px solid var(--teal);padding:8px 12px;background:var(--teal-l);border-radius:0 7px 7px 0;font-size:12px;color:var(--teal-d);margin-top:8px;line-height:1.6}
+.dvd{border:none;border-top:0.5px solid var(--bdr2);margin:12px 0}
+
+/* Feature table */
+.tbl-wrap{overflow-x:auto;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--bg2);padding:8px 10px;font-weight:500;color:var(--txt);border:0.5px solid var(--bdr2);text-align:left;white-space:nowrap;position:sticky;top:0}
+td{padding:6px 10px;border:0.5px solid var(--bdr2);color:var(--txt2);vertical-align:top}
+tr:hover td{background:var(--bg2)}
+.badge-sm{font-size:10px;font-weight:500;padding:2px 7px;border-radius:10px;white-space:nowrap;display:inline-block}
+.yes{background:#E1F5EE;color:#085041}.no{background:var(--gray-l);color:var(--gray-d)}
+.imp-bar{display:inline-block;height:5px;border-radius:3px;vertical-align:middle;min-width:4px}
+
+/* Clustering / Classification cards */
+.card{background:var(--bg);border:0.5px solid var(--bdr);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.card-title{font-size:13px;font-weight:500;color:var(--txt);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.card-desc{font-size:12px;color:var(--txt2);line-height:1.65;margin-bottom:8px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.metric{background:var(--bg2);border-radius:8px;padding:10px 12px}
+.metric-val{font-size:18px;font-weight:500;color:var(--txt)}
+.metric-lbl{font-size:11px;color:var(--txt3);margin-top:1px}
+.type-card{border-radius:10px;border:0.5px solid var(--bdr);padding:11px 13px;cursor:pointer;transition:border-color .15s}
+.type-card:hover{border-color:var(--bdr)}
+.type-card.sel{border-width:1.5px}
+.type-name{font-size:12px;font-weight:500;margin-bottom:3px}
+.type-rule{font-family:'SF Mono',Consolas,monospace;font-size:10px;background:var(--bg3);padding:5px 8px;border-radius:5px;color:var(--txt2);margin:5px 0;white-space:pre-wrap}
+.feat-sig{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.fs{font-size:10px;padding:2px 6px;border-radius:8px}
+.feat-imp-row{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:0.5px solid var(--bdr2)}
+.feat-imp-row:last-child{border:none}
+.feat-imp-name{font-size:12px;color:var(--txt2);flex:1}
+.feat-imp-bar-wrap{width:80px;height:5px;border-radius:3px;background:var(--bdr2);flex-shrink:0;overflow:hidden}
+.feat-imp-fill{height:5px;border-radius:3px}
+.feat-imp-val{font-size:11px;font-weight:500;min-width:30px;text-align:right;color:var(--txt)}
+
+/* Filter buttons */
+.filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.fbtn{padding:4px 11px;border:0.5px solid var(--bdr);border-radius:20px;font-size:11px;cursor:pointer;background:transparent;color:var(--txt2)}
+.fbtn.on{background:var(--blue-l);color:var(--blue-d);border-color:transparent}
+
+.snd{padding:7px 14px;border:0.5px solid var(--bdr);border-radius:8px;font-size:12px;cursor:pointer;background:transparent;color:var(--txt2);margin-top:10px;transition:background .15s;display:inline-block;margin-right:6px}
+.snd:hover{background:var(--bg2)}
+</style>
+</head>
+<body>
+
+<h1>Hotel Pricing Classification Pipeline</h1>
+<p class="sub">Dari raw booking data → feature extraction → clustering → klasifikasi tipe pelanggan → promo assignment</p>
+
+<div class="tabs">
+  <button class="tab on" onclick="sw(0)">Pipeline lengkap</button>
+  <button class="tab" onclick="sw(1)">Katalog fitur</button>
+  <button class="tab" onclick="sw(2)">Konfigurasi clustering</button>
+  <button class="tab" onclick="sw(3)">Target klasifikasi</button>
+</div>
+
+<!-- ══════════════════════ TAB 1: PIPELINE ══════════════════════ -->
+<div class="pnl on" id="t0">
+
+<div class="pipe" id="pipe-container">
+  <div class="pipe-line"></div>
+
+  <!-- Stage 1 -->
+  <div class="stage" onclick="tog(this)">
+    <div class="stage-num" style="background:var(--blue-l);color:var(--blue-d);border-color:var(--bg)">1</div>
+    <div class="stage-head">
+      <div>
+        <div class="stage-title">Raw data ingestion</div>
+        <div style="font-size:11px;color:var(--txt3)">PMS / Channel Manager / Booking Engine</div>
+      </div>
+      <span class="stage-badge" style="background:var(--blue-l);color:var(--blue-d)">Input</span>
+    </div>
+    <div class="stage-body">
+      <p class="stage-desc">Sumber data utama adalah Property Management System (PMS) dan channel manager. Setiap baris = satu transaksi pemesanan. Minimal membutuhkan 5 kolom.</p>
+      <div class="fields" style="grid-template-columns:repeat(3,1fr)">
+        <div class="field"><div class="field-name">booking_date</div><div class="field-type">DATE — tanggal booking dibuat</div></div>
+        <div class="field"><div class="field-name">arrival_date</div><div class="field-type">DATE — tanggal check-in</div></div>
+        <div class="field"><div class="field-name">departure_date</div><div class="field-type">DATE — tanggal check-out</div></div>
+        <div class="field"><div class="field-name">room_revenue</div><div class="field-type">FLOAT — total revenue kamar (IDR)</div></div>
+        <div class="field"><div class="field-name">room_type</div><div class="field-type">STRING — kategori kamar</div></div>
+        <div class="field"><div class="field-name">booking_channel</div><div class="field-type">STRING — OTA / direct / corporate</div></div>
+      </div>
+      <div class="note">Data minimal 12 bulan historis untuk menangkap pola musiman. Data 24+ bulan ideal untuk pelatihan model klasifikasi yang robust.</div>
+    </div>
+  </div>
+
+  <!-- Stage 2 -->
+  <div class="stage" onclick="tog(this)">
+    <div class="stage-num" style="background:var(--teal-l);color:var(--teal-d);border-color:var(--bg)">2</div>
+    <div class="stage-head">
+      <div>
+        <div class="stage-title">Komputasi tiga penciri utama</div>
+        <div style="font-size:11px;color:var(--txt3)">LOS · Booking Window · ADR</div>
+      </div>
+      <span class="stage-badge" style="background:var(--teal-l);color:var(--teal-d)">Primary features</span>
+    </div>
+    <div class="stage-body">
+      <p class="stage-desc">Tiga penciri ini adalah fondasi seluruh pipeline. Dihitung langsung dari kolom raw data — tidak membutuhkan sumber eksternal.</p>
+      <div class="formula">LOS = (departure_date - arrival_date).days
+BW  = (arrival_date - booking_date).days
+ADR = room_revenue / LOS</div>
+      <div class="fields" style="grid-template-columns:repeat(3,1fr)">
+        <div class="field" style="border-color:var(--teal)">
+          <div class="field-name" style="color:var(--teal-d)">LOS — Length of Stay</div>
+          <div class="field-type">Durasi menginap (hari). Range: 1–30+</div>
+          <div style="margin-top:5px;font-size:11px;color:var(--txt3)">Transient: 1-2 · Short: 3-5 · Leisure: 6-13 · Extended: 14+</div>
+        </div>
+        <div class="field" style="border-color:var(--blue)">
+          <div class="field-name" style="color:var(--blue-d)">BW — Booking Window</div>
+          <div class="field-type">Lead time pemesanan (hari). Range: 0–365</div>
+          <div style="margin-top:5px;font-size:11px;color:var(--txt3)">Walk-in: 0-1 · Short: 2-7 · Mid: 8-30 · Long: 31-90 · Ultra: 90+</div>
+        </div>
+        <div class="field" style="border-color:var(--purple)">
+          <div class="field-name" style="color:var(--purple-d)">ADR — Average Daily Revenue</div>
+          <div class="field-type">Revenue per malam (IDR). Proxy WTP tamu</div>
+          <div style="margin-top:5px;font-size:11px;color:var(--txt3)">Budget: &lt;P25 · Standard: P25-P50 · Premium: P50-P75 · Luxury: &gt;P75</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage 3 -->
+  <div class="stage" onclick="tog(this)">
+    <div class="stage-num" style="background:var(--purple-l);color:var(--purple-d);border-color:var(--bg)">3</div>
+    <div class="stage-head">
+      <div>
+        <div class="stage-title">Feature engineering — fitur turunan & interaksi</div>
+        <div style="font-size:11px;color:var(--txt3)">6 fitur baru dari kombinasi LOS · BW · ADR</div>
+      </div>
+      <span class="stage-badge" style="background:var(--purple-l);color:var(--purple-d)">Derived features</span>
+    </div>
+    <div class="stage-body">
+      <p class="stage-desc">Kombinasi antar penciri menghasilkan sinyal perilaku yang tidak tertangkap oleh masing-masing fitur secara terpisah. Urgency Ratio adalah fitur paling diskriminatif antar tipe pelanggan.</p>
+      <div class="formula">Total_Revenue  = ADR × LOS
+Urgency_Ratio  = ADR / max(BW, 1)        # WTP vs lead time
+RevPAB         = ADR × LOS / max(BW, 1)  # Revenue per Advance Booking day
+LOS_BW_Ratio   = LOS / max(BW, 1)        # Stay intensity per booking day
+ADR_per_BW     = ADR / max(BW, 1)        # Price urgency per day
+Lead_Urgency   = 1 / (1 + exp(-BW / λ)) # λ=14, sigmoid decay urgency score</div>
+      <div class="fields" style="grid-template-columns:repeat(2,1fr)">
+        <div class="field">
+          <div class="field-name">Total Revenue</div>
+          <div class="field-type">Nilai absolut per booking. Menangkap kombinasi harga × durasi.</div>
+        </div>
+        <div class="field">
+          <div class="field-name">Urgency Ratio ★</div>
+          <div class="field-type">Makin tinggi = makin inelastis terhadap harga. Kunci identifikasi Last-Minute Premium.</div>
+        </div>
+        <div class="field">
+          <div class="field-name">RevPAB</div>
+          <div class="field-type">Revenue normalized terhadap waktu booking. Fitur terpenting untuk clustering.</div>
+        </div>
+        <div class="field">
+          <div class="field-name">Lead Urgency</div>
+          <div class="field-type">Score 0–1. Mendekati 1 = last-minute. Mendekati 0 = early planner.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage 4 -->
+  <div class="stage" onclick="tog(this)">
+    <div class="stage-num" style="background:var(--amber-l);color:var(--amber-d);border-color:var(--bg)">4</div>
+    <div class="stage-head">
+      <div>
+        <div class="stage-title">Komputasi fitur entropi (Shannon)</div>
+        <div style="font-size:11px;color:var(--txt3)">H(LOS) · H(BW) · H(ADR|LOS) · I(LOS;BW)</div>
+      </div>
+      <span class="stage-badge" style="background:var(--amber-l);color:var(--amber-d)">Entropy features</span>
+    </div>
+    <div class="stage-body">
+      <p class="stage-desc">Entropi dihitung per segmen (per property, per bulan, per BW bin) menggunakan rolling window 30 hari. Bukan per-booking, melainkan sebagai karakteristik distribusi konteks di mana booking terjadi.</p>
+      <div class="formula">H(X)       = -Σ p(xᵢ) × log₂(p(xᵢ))        # Shannon entropy dasar
+
+H_LOS      = H(distribusi LOS dalam rolling window)
+H_BW       = H(distribusi BW dalam rolling window)
+H_ADR_LOS  = H(ADR, LOS) - H(LOS)             # Conditional entropy
+MI_LOS_BW  = H(LOS) + H(BW) - H(LOS, BW)     # Mutual information
+
+# Implementasi Python:
+from scipy.stats import entropy
+H_BW = entropy(np.histogram(bw_window, bins=5)[0], base=2)</div>
+      <div class="fields" style="grid-template-columns:repeat(2,1fr)">
+        <div class="field">
+          <div class="field-name">H(BW) — booking pattern entropy</div>
+          <div class="field-type">Tinggi → pola tak terprediksi → trigger dynamic pricing. Rendah → konsentrasi di satu window → advance discount cukup.</div>
+        </div>
+        <div class="field">
+          <div class="field-name">H(LOS) — stay duration entropy</div>
+          <div class="field-type">Tinggi → mix transient + leisure → butuh LOS-based pricing. Rendah → homogen → satu rate structure cukup.</div>
+        </div>
+        <div class="field">
+          <div class="field-name">H(ADR|LOS) — conditional entropy</div>
+          <div class="field-type">Rendah → LOS prediktor kuat untuk ADR. Tinggi → perlu fitur tambahan untuk prediksi harga.</div>
+        </div>
+        <div class="field">
+          <div class="field-name">I(LOS;BW) — mutual information</div>
+          <div class="field-type">Tinggi → book jauh cenderung stay lama → bundle pricing dan cross-prediction bernilai tinggi.</div>
+        </div>
+      </div>
+      <div class="note">Entropi digunakan sebagai fitur kontekstual dalam klasifikasi — bukan sebagai fitur clustering langsung, karena entropi mengkarakterisasi distribusi, bukan satu booking individual.</div>
+    </div>
+  </div>
+
+  <!-- Stage 5 -->
+  <div class="stage" onclick="tog(this)">
+    <div class="stage-num" style="background:var(--green-l);color:var(--green-d);border-color:var(--bg)">5</div>
+    <div class="stage-head">
+      <div>
+        <div class="stage-title">Fitur temporal & diskretisasi</div>
+        <div style="font-size:11px;color:var(--txt3)">DoW · Season · Holiday · LOS_cat · BW_cat · ADR_tier</div>
+      </div>
+      <span class="stage-badge" style="background:var(--green-l);color:var(--green-d)">Temporal + categorical</span>
+    </div>
+    <div class="stage-body">
+      <p class="stage-desc">Fitur waktu menangkap permintaan periodik. Diskretisasi mengubah nilai kontinu menjadi kategori bermakna bisnis yang dikenali model lebih mudah.</p>
+      <div class="formula">DoW_arrival     = arrival_date.dayofweek    # 0=Senin, 6=Minggu
+Month           = arrival_date.month           # 1–12
+Is_Weekend      = 1 if DoW in [5,6] else 0
+Holiday_prox    = min(|arrival - holiday| for holiday in calendar)
+Season          = {1-3:'Q1', 4-6:'Q2', 7-9:'Q3', 10-12:'Q4'}[month]
+
+LOS_cat = pd.cut(LOS, bins=[0,2,5,13,999], labels=['transient','short','leisure','extended'])
+BW_cat  = pd.cut(BW,  bins=[-1,1,7,30,90,999], labels=['walkin','short','mid','long','ultra'])
+ADR_tier= pd.qcut(ADR, q=4, labels=['budget','standard','premium','luxury'])</div>
+    </div>
+  </div>
+
+  <!-- Stage 6 -->
+  <div class="stage" onclick="tog(this)">
+    <div class="stage-num" style="background:var(--gray-l);color:var(--gray-d);border-color:var(--bg)">6</div>
+    <div class="stage-head">
+      <div>
+        <div class="stage-title">Preprocessing — normalisasi & encoding</div>
+        <div style="font-size:11px;color:var(--txt3)">MinMaxScaler · One-hot encoding · Imputation</div>
+      </div>
+      <span class="stage-badge" style="background:var(--gray-l);color:var(--gray-d)">Preprocessing</span>
+    </div>
+    <div class="stage-body">
+      <p class="stage-desc">Fitur numerik dinormalisasi sebelum clustering (K-Means sensitif terhadap skala). Fitur kategorik diubah ke numerik untuk algoritma ML.</p>
+      <div class="formula">Numerical  → MinMaxScaler: x' = (x - x_min) / (x_max - x_min)
+Categorical → pd.get_dummies(drop_first=True) # one-hot encoding
+Missing     → median imputation (numerical), mode imputation (categorical)
+Outlier     → IQR clipping: clip to [Q1 - 1.5*IQR, Q3 + 1.5*IQR]</div>
+      <div class="note">Untuk clustering, hanya fitur numerik yang dinormalisasi (LOS, BW, ADR, Urgency_Ratio, RevPAB, Total_Revenue). Untuk klasifikasi, semua 20+ fitur digunakan termasuk one-hot encoded kategorik.</div>
+    </div>
+  </div>
+
+  <!-- Stage 7 — CLUSTERING -->
+  <div class="stage open" onclick="tog(this)">
+    <div class="stage-num" style="background:var(--teal-l);color:var(--teal-d);border-color:var(--bg)">7</div>
+    <div class="stage-head">
+      <div>
+        <div class="stage-title">Clustering — K-Means unsupervised</div>
+        <div style="font-size:11px;color:var(--txt3)">6 fitur numerik · k=6 · silhouette validation</div>
+      </div>
+      <span class="stage-badge" style="background:var(--teal-l);color:var(--teal-d)">Unsupervised learning</span>
+    </div>
+    <div class="stage-body">
+      <p class="stage-desc">Clustering menggunakan 6 fitur inti yang paling diskriminatif. Output adalah label cluster numerik (0–5) yang kemudian diinterpretasikan secara bisnis untuk diberi nama tipe pelanggan.</p>
+      <div class="formula">Fitur clustering (semua dinormalisasi 0–1):
+  X_cluster = [LOS_norm, BW_norm, ADR_norm,
+               Urgency_Ratio_norm, RevPAB_norm, Total_Revenue_norm]
+
+Algoritma: KMeans(n_clusters=6, init='k-means++', n_init=10, random_state=42)
+
+Validasi pemilihan k:
+  Elbow method: SSE vs k (k=2..10)
+  Silhouette score: pilih k dengan score tertinggi
+  Business interpretation: apakah tiap cluster dapat diberi nama bermakna?
+
+Alt algoritma: DBSCAN untuk deteksi outlier / anomali booking</div>
+      <div class="fields" style="grid-template-columns:repeat(3,1fr)">
+        <div class="field" style="border-color:var(--teal)">
+          <div class="field-name" style="color:var(--teal-d)">LOS (normalized)</div>
+          <div class="field-type">Pembeda utama transient vs extended stay</div>
+        </div>
+        <div class="field" style="border-color:var(--teal)">
+          <div class="field-name" style="color:var(--teal-d)">BW (normalized)</div>
+          <div class="field-type">Pembeda planner vs last-minute booker</div>
+        </div>
+        <div class="field" style="border-color:var(--teal)">
+          <div class="field-name" style="color:var(--teal-d)">ADR (normalized)</div>
+          <div class="field-type">Pembeda price tier dan willingness to pay</div>
+        </div>
+        <div class="field" style="border-color:var(--teal)">
+          <div class="field-name" style="color:var(--teal-d)">Urgency Ratio</div>
+          <div class="field-type">Kunci identifikasi Last-Minute Premium</div>
+        </div>
+        <div class="field" style="border-color:var(--teal)">
+          <div class="field-name" style="color:var(--teal-d)">RevPAB</div>
+          <div class="field-type">Nilai booking per advance booking day</div>
+        </div>
+        <div class="field" style="border-color:var(--teal)">
+          <div class="field-name" style="color:var(--teal-d)">Total Revenue</div>
+          <div class="field-type">Nilai absolut kontribusi revenue per booking</div>
+        </div>
+      </div>
+      <div class="note">Output clustering: setiap booking mendapat label cluster 0–5. Tim revenue manager menganalisis karakteristik centroid tiap cluster untuk memberi nama tipe. Proses ini dilakukan SATU KALI untuk membangun ground truth label training data klasifikasi.</div>
+    </div>
+  </div>
+
+  <!-- Stage 8 — CLASSIFICATION -->
+  <div class="stage open" onclick="tog(this)">
+    <div class="stage-num" style="background:var(--purple-l);color:var(--purple-d);border-color:var(--bg)">8</div>
+    <div class="stage-head">
+      <div>
+        <div class="stage-title">Training model klasifikasi — Random Forest</div>
+        <div style="font-size:11px;color:var(--txt3)">20+ fitur · 6 kelas target · Stratified K-Fold</div>
+      </div>
+      <span class="stage-badge" style="background:var(--purple-l);color:var(--purple-d)">Supervised learning</span>
+    </div>
+    <div class="stage-body">
+      <p class="stage-desc">Label dari clustering digunakan sebagai target kelas (ground truth). Model klasifikasi dilatih dengan semua 20+ fitur — termasuk entropy, temporal, dan kategorik — untuk dapat melakukan prediksi real-time pada inquiry baru.</p>
+      <div class="formula">Target    : customer_type ∈ {0:Strategic Planner, 1:Business Traveler,
+                              2:Last-Minute Premium, 3:Deal Seeker,
+                              4:Extended Stay, 5:Occasion Traveler}
+
+Features  : [LOS, BW, ADR, Total_Revenue, Urgency_Ratio, RevPAB,
+             LOS_BW_Ratio, Lead_Urgency,
+             H_LOS, H_BW, H_ADR_LOS, MI_LOS_BW,
+             LOS_cat_enc, BW_cat_enc, ADR_tier_enc,
+             DoW_arrival, Month, Is_Weekend, Holiday_prox, Season_enc]
+
+Algorithm : RandomForestClassifier(n_estimators=300, max_depth=12,
+              class_weight='balanced', random_state=42)
+
+Validation: StratifiedKFold(n_splits=5)
+Metrics   : F1-macro, Precision, Recall per kelas, Confusion Matrix</div>
+      <div class="fields" style="grid-template-columns:repeat(2,1fr)">
+        <div class="field">
+          <div class="field-name">Mengapa Random Forest?</div>
+          <div class="field-type">Tahan terhadap outlier, interpretable via feature importance, tidak sensitif terhadap skala fitur, native multi-class. Alternatif: XGBoost untuk performa lebih tinggi.</div>
+        </div>
+        <div class="field">
+          <div class="field-name">Class imbalance handling</div>
+          <div class="field-type">Gunakan class_weight='balanced' karena beberapa tipe (Extended Stay, Occasion) volume lebih sedikit. Alternatif: SMOTE oversampling pada minority class.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage 9 -->
+  <div class="stage" onclick="tog(this)">
+    <div class="stage-num" style="background:var(--coral-l);color:var(--coral-d);border-color:var(--bg)">9</div>
+    <div class="stage-head">
+      <div>
+        <div class="stage-title">Real-time scoring & promo assignment</div>
+        <div style="font-size:11px;color:var(--txt3)">Klasifikasi sebelum booking confirmed → promo dipersonalisasi</div>
+      </div>
+      <span class="stage-badge" style="background:var(--coral-l);color:var(--coral-d)">Output</span>
+    </div>
+    <div class="stage-body">
+      <p class="stage-desc">Model berjalan real-time saat tamu browsing atau saat inquiry masuk. Output adalah tipe pelanggan + promo yang dikirimkan otomatis via channel yang sesuai.</p>
+      <div class="formula">Input  : {BW_realtime, LOS_estimated, ADR_proxy, DoW, Month, ...}
+Output : {customer_type, confidence, promo_type, channel, timing}
+
+Expected_Revenue = P(convert | type, promo) × ADR_adj × LOS
+Promo_ROI        = (Revenue_uplift - Promo_cost) / Promo_cost</div>
+      <div class="note">Feedback loop: setiap booking yang selesai dikembalikan sebagai data training baru. Model diretrain mingguan. Lakukan A/B test (80% treated / 20% control) untuk mengukur incremental uplift secara kausal.</div>
+    </div>
+  </div>
+
+</div><!-- /pipe -->
+</div><!-- /t0 -->
+
+<!-- ══════════════════════ TAB 2: FEATURE CATALOG ══════════════════════ -->
+<div class="pnl" id="t1">
+  <p style="font-size:16px;font-weight:500;margin-bottom:4px">Katalog lengkap — 20 fitur</p>
+  <p style="font-size:13px;color:var(--txt2);margin-bottom:14px">Filter berdasarkan kelompok fitur. Kolom "Cluster" dan "Klasifikasi" menunjukkan apakah fitur digunakan pada masing-masing tahap.</p>
+  <div class="filter-row">
+    <button class="fbtn on" onclick="filterFeat('all',this)">Semua</button>
+    <button class="fbtn" onclick="filterFeat('primary',this)">Primary</button>
+    <button class="fbtn" onclick="filterFeat('derived',this)">Derived</button>
+    <button class="fbtn" onclick="filterFeat('entropy',this)">Entropy</button>
+    <button class="fbtn" onclick="filterFeat('temporal',this)">Temporal</button>
+    <button class="fbtn" onclick="filterFeat('categorical',this)">Categorical</button>
+  </div>
+  <div class="tbl-wrap">
+    <table id="feat-table">
+      <tr>
+        <th>#</th><th>Fitur</th><th>Formula / Nilai</th><th>Kelompok</th>
+        <th>Cluster</th><th>Klasifikasi</th><th>Bobot</th><th>Peran & interpretasi</th>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════ TAB 3: CLUSTERING ══════════════════════ -->
+<div class="pnl" id="t2">
+  <p style="font-size:16px;font-weight:500;margin-bottom:4px">Konfigurasi clustering</p>
+  <p style="font-size:13px;color:var(--txt2);margin-bottom:14px">Detail teknis tahap unsupervised learning untuk membentuk label ground truth klasifikasi.</p>
+
+  <div class="g3">
+    <div class="metric"><div class="metric-val" style="color:var(--teal)">6</div><div class="metric-lbl">Jumlah cluster (k)</div></div>
+    <div class="metric"><div class="metric-val" style="color:var(--blue)">6</div><div class="metric-lbl">Fitur input clustering</div></div>
+    <div class="metric"><div class="metric-val" style="color:var(--purple)">K-Means++</div><div class="metric-lbl">Inisialisasi centroid</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Fitur clustering — kriteria pemilihan</div>
+    <p class="card-desc">Hanya 6 fitur numerik core digunakan untuk clustering. Fitur entropy dan temporal tidak dimasukkan karena bersifat kontekstual (distribusi), bukan karakteristik individual booking.</p>
+    <table style="font-size:12px;width:100%">
+      <tr><th>Fitur</th><th>Rentang</th><th>Normalisasi</th><th>Alasan dimasukkan</th></tr>
+      <tr><td>LOS</td><td>1 – 30+</td><td>MinMax</td><td>Variabel pembeda terkuat antar tipe stay</td></tr>
+      <tr><td>BW</td><td>0 – 365</td><td>MinMax</td><td>Variabel pembeda perencanaan vs spontanitas</td></tr>
+      <tr><td>ADR</td><td>IDR 200K – 5M+</td><td>MinMax</td><td>Proxy willingness-to-pay dan segmen harga</td></tr>
+      <tr><td>Urgency_Ratio</td><td>0.01 – 500+</td><td>Log + MinMax</td><td>Kunci identifikasi Last-Minute Premium, distribusi sangat skewed → log transform dulu</td></tr>
+      <tr><td>RevPAB</td><td>0 – 10M+</td><td>Log + MinMax</td><td>Nilai booking per hari advance, kombinasi LOS+BW+ADR</td></tr>
+      <tr><td>Total_Revenue</td><td>0 – 50M+</td><td>Log + MinMax</td><td>Nilai absolut kontribusi, membedakan high-value dari volume bookings</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Profil centroid yang diharapkan per cluster</div>
+    <table style="font-size:12px;width:100%">
+      <tr><th>Cluster</th><th>LOS</th><th>BW</th><th>ADR</th><th>Urgency</th><th>Label tipe</th></tr>
+      <tr><td>C0</td><td>Tinggi (7-14)</td><td>Sangat tinggi (60+)</td><td>Medium</td><td>Rendah</td><td style="font-weight:500;color:var(--teal-d)">Strategic Planner</td></tr>
+      <tr><td>C1</td><td>Rendah (1-2)</td><td>Medium (7-21)</td><td>Tinggi</td><td>Tinggi</td><td style="font-weight:500;color:var(--blue-d)">Business Traveler</td></tr>
+      <tr><td>C2</td><td>Rendah-medium</td><td>Sangat rendah (0-3)</td><td>Sangat tinggi</td><td>Sangat tinggi</td><td style="font-weight:500;color:var(--purple-d)">Last-Minute Premium</td></tr>
+      <tr><td>C3</td><td>Medium (3-7)</td><td>Medium-tinggi (21-60)</td><td>Rendah</td><td>Rendah</td><td style="font-weight:500;color:var(--amber-d)">Deal Seeker</td></tr>
+      <tr><td>C4</td><td>Sangat tinggi (14+)</td><td>Medium (14-45)</td><td>Rendah</td><td>Rendah</td><td style="font-weight:500;color:var(--coral-d)">Extended Stay</td></tr>
+      <tr><td>C5</td><td>Medium (2-5)</td><td>Tinggi (30-90)</td><td>Medium-tinggi</td><td>Medium</td><td style="font-weight:500;color:var(--pink-d)">Occasion Traveler</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Validasi pemilihan k</div>
+    <div class="formula">from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+
+scores = {}
+for k in range(2, 11):
+    km = KMeans(n_clusters=k, init='k-means++', n_init=10, random_state=42)
+    labels = km.fit_predict(X_cluster_scaled)
+    scores[k] = silhouette_score(X_cluster_scaled, labels)
+
+# Pilih k dengan silhouette tertinggi yang juga bermakna secara bisnis
+# Ekspektasi: k=6 menghasilkan silhouette score > 0.45</div>
+  </div>
+</div>
+
+<!-- ══════════════════════ TAB 4: CLASSIFICATION TARGET ══════════════════════ -->
+<div class="pnl" id="t3">
+  <p style="font-size:16px;font-weight:500;margin-bottom:4px">Target kelas klasifikasi — 6 tipe pelanggan</p>
+  <p style="font-size:13px;color:var(--txt2);margin-bottom:14px">Klik kartu untuk melihat decision rules, fitur dominan, dan strategi promo per tipe.</p>
+
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px" id="type-grid"></div>
+
+  <div class="card" id="type-detail-box" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0" id="td-icon"></div>
+      <div><div style="font-size:14px;font-weight:500;color:var(--txt)" id="td-name"></div><div style="font-size:12px;color:var(--txt2)" id="td-persona"></div></div>
+    </div>
+    <div class="g2">
+      <div>
+        <div style="font-size:12px;font-weight:500;color:var(--txt);margin-bottom:6px">Decision rule (rule-based classifier)</div>
+        <div class="formula" id="td-rule"></div>
+        <div style="font-size:12px;font-weight:500;color:var(--txt);margin-top:10px;margin-bottom:6px">Fitur dominan (feature importance)</div>
+        <div id="td-imps"></div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:500;color:var(--txt);margin-bottom:6px">Distribusi fitur inti</div>
+        <div id="td-feats"></div>
+        <div style="font-size:12px;font-weight:500;color:var(--txt);margin-top:10px;margin-bottom:5px">Promo optimal</div>
+        <div style="background:var(--bg2);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--txt2);line-height:1.6" id="td-promo"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dvd"></div>
+  <div class="card">
+    <div class="card-title">Evaluasi model — metrik yang digunakan</div>
+    <div class="formula">Metrik utama: F1-macro (rata-rata F1 semua kelas, tanpa weight volume)
+Alasan: kelas imbalanced (Extended Stay lebih sedikit dari Business Traveler)
+        F1-macro tidak membiarkan kelas mayoritas mendominasi evaluasi
+
+Target performa:
+  F1-macro  ≥ 0.80  (acceptable), ≥ 0.85 (good), ≥ 0.90 (excellent)
+  Per kelas : Precision ≥ 0.75, Recall ≥ 0.75
+
+Tambahan:
+  Confusion matrix → identifikasi tipe yang sering tertukar
+  SHAP values     → interpretasi feature importance per prediksi
+  Calibration plot → apakah confidence score terpercaya?</div>
+  </div>
+
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">
+    <button class="snd" onclick="alert('Fitur ini membutuhkan koneksi Claude. Gunakan tombol di chat utama.')">Kode Python pipeline lengkap ↗</button>
+    <button class="snd" onclick="alert('Fitur ini membutuhkan koneksi Claude. Gunakan tombol di chat utama.')">Desain A/B testing uplift ↗</button>
+    <button class="snd" onclick="alert('Fitur ini membutuhkan koneksi Claude. Gunakan tombol di chat utama.')">Rancangan paper penelitian ↗</button>
+  </div>
+</div>
+
+<script>
+// ─── Tab switching ───
+function sw(i){
+  document.querySelectorAll('.pnl').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.pnl')[i].classList.add('on');
+  document.querySelectorAll('.tab')[i].classList.add('on');
+}
+
+// ─── Stage toggle ───
+function tog(el){
+  el.classList.toggle('open');
+}
+
+// ─── Feature data ───
+const FEATURES=[
+  {n:'LOS',f:'departure_date − arrival_date',g:'primary',cl:1,cls:1,imp:95,r:'Variabel pembeda utama — transient vs extended stay. Distribusi sangat skewed ke kanan.'},
+  {n:'Booking Window (BW)',f:'arrival_date − booking_date',g:'primary',cl:1,cls:1,imp:93,r:'Pembeda planner vs spontaneous booker. Range 0–365+ hari.'},
+  {n:'ADR',f:'room_revenue / LOS',g:'primary',cl:1,cls:1,imp:90,r:'Proxy willingness-to-pay per malam. Perlu log-transform sebelum clustering karena skewed.'},
+  {n:'Total Revenue',f:'ADR × LOS',g:'derived',cl:1,cls:1,imp:88,r:'Nilai absolut booking. Membedakan high-value dari volume bookings.'},
+  {n:'Urgency Ratio',f:'ADR / max(BW, 1)',g:'derived',cl:1,cls:1,imp:92,r:'Sinyal inelastisitas harga. Sangat tinggi pada Last-Minute Premium. Perlu log-transform.'},
+  {n:'RevPAB',f:'ADR × LOS / max(BW, 1)',g:'derived',cl:1,cls:1,imp:87,r:'Revenue per Advance Booking day. Fitur komposit paling informatif untuk clustering.'},
+  {n:'LOS-BW Ratio',f:'LOS / max(BW, 1)',g:'derived',cl:0,cls:1,imp:72,r:'Stay intensity per hari advance. Tinggi pada Extended Stay yang book tidak terlalu jauh.'},
+  {n:'Lead Urgency',f:'1 / (1 + exp(−BW/14))',g:'derived',cl:0,cls:1,imp:78,r:'Score urgency 0–1 (sigmoid). Mendekati 1 = last-minute. Berguna sebagai fitur klasifikasi.'},
+  {n:'H(LOS)',f:'−Σ p(LOS_cat)×log₂(p)',g:'entropy',cl:0,cls:1,imp:65,r:'Entropi distribusi LOS dalam rolling 30d. Konteks keragaman tamu di periode tersebut.'},
+  {n:'H(BW)',f:'−Σ p(BW_cat)×log₂(p)',g:'entropy',cl:0,cls:1,imp:70,r:'Entropi pola booking window. Tinggi = dynamic pricing diperlukan. Digunakan sebagai sinyal trigger.'},
+  {n:'H(ADR|LOS)',f:'H(ADR,LOS) − H(LOS)',g:'entropy',cl:0,cls:1,imp:60,r:'Seberapa terprediksi ADR bila LOS diketahui. Rendah = LOS prediktor kuat untuk harga.'},
+  {n:'I(LOS;BW)',f:'H(LOS)+H(BW)−H(LOS,BW)',g:'entropy',cl:0,cls:1,imp:55,r:'Informasi bersama LOS dan BW. Tinggi = keduanya berkorelasi. Sinyal bundle pricing.'},
+  {n:'LOS_cat',f:'cut(LOS,[0,2,5,13,999])',g:'categorical',cl:0,cls:1,imp:75,r:'4 kategori bermakna bisnis: transient, short, leisure, extended. One-hot encoded.'},
+  {n:'BW_cat',f:'cut(BW,[-1,1,7,30,90,999])',g:'categorical',cl:0,cls:1,imp:73,r:'5 kategori booking window. Menangkap pola non-linear yang tidak tertangkap BW kontinu.'},
+  {n:'ADR_tier',f:'qcut(ADR, q=4)',g:'categorical',cl:0,cls:1,imp:68,r:'4 kuartil harga: budget, standard, premium, luxury. Stabil secara musiman.'},
+  {n:'DoW_arrival',f:'arrival_date.dayofweek',g:'temporal',cl:0,cls:1,imp:58,r:'Hari kedatangan. Weekend vs weekday mempengaruhi tipe tamu secara signifikan.'},
+  {n:'Month',f:'arrival_date.month',g:'temporal',cl:0,cls:1,imp:62,r:'Bulan kedatangan. Menangkap musiman pariwisata dan bisnis.'},
+  {n:'Is_Weekend',f:'1 if DoW in [5,6] else 0',g:'temporal',cl:0,cls:1,imp:50,r:'Binary flag. Leisure traveler dominan saat weekend, business saat weekday.'},
+  {n:'Holiday_proximity',f:'min|arrival−holiday|',g:'temporal',cl:0,cls:1,imp:48,r:'Jarak ke hari libur terdekat. Menangkap demand spike event-driven.'},
+  {n:'Season',f:'{Q1:1-3, Q2:4-6, Q3:7-9, Q4:10-12}',g:'temporal',cl:0,cls:1,imp:55,r:'Kuartal arrival. Proxy seasonality yang lebih stabil dari bulan individual.'},
+];
+
+const TYPE_COLORS=[
+  ['#E1F5EE','#085041','🗓️'],['#E6F1FB','#0C447C','💼'],['#EEEDFE','#3C3489','⚡'],
+  ['#FAEEDA','#633806','🏷️'],['#FAECE7','#712B13','🏠'],['#FBEAF0','#72243E','💝']
+];
+const TYPES=[
+  {name:'Strategic Planner',persona:'Keluarga / leisure planner, price-conscious',
+   rule:'BW > 60\nAND LOS > 6\nAND Urgency_Ratio < 5\nAND ADR_tier IN [standard, premium]',
+   imps:[['BW (normalized)',92],['LOS (normalized)',88],['RevPAB',80],['Lead_Urgency',70],['H_BW',55]],
+   feats:[['BW','60–120+ hari'],['LOS','7–14 malam'],['ADR','IDR 500K–1.2M'],['Urgency','Rendah (<5)']],
+   promo:'Early bird package: diskon 15-20% + breakfast + 1 aktivitas. Kirim via email D-75 hingga D-90. Revenue lever: perpanjang rata-rata LOS.'},
+  {name:'Business Traveler',persona:'Eksekutif / corporate, expense account',
+   rule:'BW BETWEEN 7 AND 21\nAND LOS <= 2\nAND ADR > P75\nAND booking_channel = "corporate"',
+   imps:[['Urgency_Ratio',85],['ADR (normalized)',90],['LOS (normalized)',78],['DoW_arrival',72],['BW (normalized)',65]],
+   feats:[['BW','7–21 hari'],['LOS','1–2 malam'],['ADR','> P75 (luxury)'],['DoW','Senin–Kamis']],
+   promo:'Loyalty point multiplier 3x + complimentary breakfast. Corporate portal notifikasi. Lever: frekuensi kunjungan 2x → 4x per tahun.'},
+  {name:'Last-Minute Premium',persona:'Profesional muda / high-income spontaneous',
+   rule:'BW <= 3\nAND Urgency_Ratio > 10\nAND ADR > P75',
+   imps:[['Urgency_Ratio',98],['BW (normalized)',95],['Lead_Urgency',88],['ADR (normalized)',82],['RevPAB',75]],
+   feats:[['BW','0–3 hari'],['LOS','1–4 malam'],['ADR','Sangat tinggi'],['Urgency','>10 (sangat inelastis)']],
+   promo:'Complimentary upgrade + late checkout 2PM — BUKAN diskon harga. Push notif H-3 sampai H-0. Lever: ancillary spend (spa, dining) naik 40%.'},
+  {name:'Deal Seeker',persona:'Millennial / gen-Z, OTA-first, price-driven',
+   rule:'BW BETWEEN 21 AND 60\nAND H_BW > 0.7\nAND ADR < P50\nAND booking_channel = "OTA"',
+   imps:[['H_BW',88],['ADR (normalized)',82],['BW (normalized)',78],['LOS_cat',65],['Total_Revenue',60]],
+   feats:[['BW','21–60 hari'],['LOS','3–7 malam'],['ADR','< P50 (budget-standard)'],['H(BW)','Tinggi']],
+   promo:'Direct booking incentive 10-15% + flash sale countdown. Email retargeting + display ads. Lever: geser 30% OTA ke direct (hemat komisi 15-20%).'},
+  {name:'Extended Stay',persona:'Remote worker / relokasi sementara / medical',
+   rule:'LOS > 14\nAND BW BETWEEN 14 AND 45\nAND ADR < P50',
+   imps:[['LOS (normalized)',98],['Total_Revenue',85],['LOS_BW_Ratio',80],['LOS_cat',78],['ADR (normalized)',60]],
+   feats:[['BW','14–45 hari'],['LOS','14–30+ malam'],['ADR','Rendah (long-stay rate)'],['Total','Tinggi (LOS×ADR)']],
+   promo:'Long-stay rate + amenity inclusion (laundry, workspace, dapur mini). Email langsung D-30. Lever: ancillary per malam (laundry, grocery partnership).'},
+  {name:'Occasion Traveler',persona:'Pasangan anniversary / honeymoon / ulang tahun',
+   rule:'BW BETWEEN 30 AND 90\nAND LOS BETWEEN 2 AND 5\nAND ADR > P50\nAND (Month IN [2,5,12] OR DoW IN [5,6])',
+   imps:[['BW (normalized)',78],['Month',75],['ADR (normalized)',72],['DoW_arrival',68],['Holiday_prox',65]],
+   feats:[['BW','30–90 hari'],['LOS','2–5 malam'],['ADR','Medium-tinggi'],['Timing','Weekend / event']],
+   promo:'Experience package: champagne, dekorasi kamar, couple spa, late checkout. Email curated + Instagram retarget. Lever: upsell room category +25% ADR.'},
+];
+
+function buildFeatTable(filter){
+  const tb=document.getElementById('feat-table');
+  const rows=tb.querySelectorAll('tr:not(:first-child)');
+  rows.forEach(r=>r.remove());
+  const gmap={primary:'#E6F1FB',derived:'#E1F5EE',entropy:'#FAEEDA',temporal:'#EAF3DE',categorical:'#EEEDFE'};
+  const gdmap={primary:'#0C447C',derived:'#085041',entropy:'#633806',temporal:'#27500A',categorical:'#3C3489'};
+  FEATURES.filter(f=>filter==='all'||f.g===filter).forEach((f,i)=>{
+    const tr=document.createElement('tr');
+    const barW=Math.round(f.imp*0.7);
+    tr.innerHTML=`<td>${i+1}</td>
+      <td style="font-weight:500;color:var(--txt)">${f.n}</td>
+      <td><code style="font-size:10px;background:var(--bg3);padding:2px 5px;border-radius:4px">${f.f}</code></td>
+      <td><span class="badge-sm" style="background:${gmap[f.g]};color:${gdmap[f.g]}">${f.g}</span></td>
+      <td><span class="badge-sm ${f.cl?'yes':'no'}">${f.cl?'✓ Ya':'—'}</span></td>
+      <td><span class="badge-sm yes">✓ Ya</span></td>
+      <td><div class="imp-bar" style="width:${barW}px;background:${gdmap[f.g]};opacity:0.7"></div> <span style="font-size:11px;color:var(--txt3)">${f.imp}%</span></td>
+      <td style="font-size:11px;color:var(--txt3)">${f.r}</td>`;
+    tb.appendChild(tr);
+  });
+}
+buildFeatTable('all');
+
+function filterFeat(g,btn){
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  buildFeatTable(g);
+}
+
+function buildTypeGrid(){
+  const g=document.getElementById('type-grid');
+  TYPES.forEach((t,i)=>{
+    const d=document.createElement('div');
+    d.className='type-card';
+    d.style.borderColor='var(--bdr)';
+    d.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="width:28px;height:28px;border-radius:50%;background:${TYPE_COLORS[i][0]};display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">${TYPE_COLORS[i][2]}</span>
+      <span class="type-name" style="color:${TYPE_COLORS[i][1]}">${t.name}</span>
+    </div>
+    <div style="font-size:11px;color:var(--txt3)">${t.persona}</div>
+    <div class="feat-sig" style="margin-top:6px">${t.feats.slice(0,2).map(f=>`<span class="fs" style="background:${TYPE_COLORS[i][0]};color:${TYPE_COLORS[i][1]}">${f[0]}: ${f[1]}</span>`).join('')}</div>`;
+    d.onclick=()=>showType(i,d);
+    g.appendChild(d);
+  });
+}
+buildTypeGrid();
+
+function showType(i,el){
+  document.querySelectorAll('.type-card').forEach(c=>{c.classList.remove('sel');c.style.borderColor='var(--bdr)'});
+  el.classList.add('sel');
+  el.style.borderColor=TYPE_COLORS[i][1];
+  const t=TYPES[i];
+  const box=document.getElementById('type-detail-box');
+  box.style.display='block';
+  document.getElementById('td-icon').style.background=TYPE_COLORS[i][0];
+  document.getElementById('td-icon').textContent=TYPE_COLORS[i][2];
+  document.getElementById('td-name').textContent=t.name;
+  document.getElementById('td-persona').textContent=t.persona;
+  document.getElementById('td-rule').textContent=t.rule;
+  document.getElementById('td-imps').innerHTML=t.imps.map(([name,val])=>`
+    <div class="feat-imp-row">
+      <span class="feat-imp-name">${name}</span>
+      <div class="feat-imp-bar-wrap"><div class="feat-imp-fill" style="width:${val}%;background:${TYPE_COLORS[i][1]}"></div></div>
+      <span class="feat-imp-val">${val}%</span>
+    </div>`).join('');
+  document.getElementById('td-feats').innerHTML=t.feats.map(([k,v])=>`
+    <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:0.5px solid var(--bdr2);font-size:12px">
+      <span style="color:var(--txt3)">${k}</span>
+      <span style="font-weight:500;color:var(--txt)">${v}</span>
+    </div>`).join('');
+  document.getElementById('td-promo').textContent=t.promo;
+}
+</script>
+</body>
+</html>
